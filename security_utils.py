@@ -80,10 +80,22 @@ def sanitize_command_input(user_input):
     
     # Remove dangerous characters that could be used for command injection
     dangerous_chars = ['&', '|', ';', '$', '`', '(', ')', '{', '}', '[', ']', 
-                      '<', '>', '!', '?', '*', '~', '^', '\n', '\r', '\t']
+                      '<', '>', '!', '?', '*', '~', '^', '\n', '\r', '\t', '\\', 
+                      '%', '#', '@', '=', '+', ' ']  # Added more dangerous chars
     
     for char in dangerous_chars:
         if char in user_input:
+            return None
+    
+    # Check for common command injection patterns
+    dangerous_patterns = [
+        'bash', 'sh', 'nc', 'netcat', 'curl', 'wget', 'python', 'perl', 'ruby',
+        'php', 'node', 'exec', 'system', 'eval', 'base64', 'xxd', 'uudecode'
+    ]
+    
+    user_input_lower = user_input.lower()
+    for pattern in dangerous_patterns:
+        if pattern in user_input_lower:
             return None
     
     # Only allow the whitelisted filenames

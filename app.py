@@ -5,6 +5,7 @@ import urllib.parse
 from blog_blueprint import blog_bp
 from admin_blueprint import admin_bp
 from logs_blueprint import logs_bp
+from enhanced_security import SecurityFilter
 
 app = Flask(__name__)
 
@@ -38,6 +39,16 @@ def fetch_next():
         if not url:
             return jsonify({'error': 'URL parameter is required'}), 400
         
+        # Enhanced security validation
+        form_data = dict(request.form)
+        if 'url' in form_data:
+            del form_data['url']  # Remove the url parameter from form data
+        
+        # Validate the entire request using enhanced security filter
+        is_valid, error_message = SecurityFilter.validate_request(url, form_data)
+        if not is_valid:
+            return jsonify({'error': f'Security validation failed: {error_message}'}), 400
+        
         # Parse the URL to validate it
         parsed_url = urllib.parse.urlparse(url)
         
@@ -64,18 +75,23 @@ def fetch_next():
         # Make the internal request with form data if provided
         # Since we're making requests from localhost (127.0.0.1), they will be allowed
         
-        # Forward any form data from the original request
-        form_data = dict(request.form)
-        if 'url' in form_data:
-            del form_data['url']  # Remove the url parameter
+        # Forward any form data from the original request (already validated above)
+        # Use strict timeout and connection limits to prevent abuse
+        request_timeout = 3  # Short timeout to prevent hanging connections
         
         if form_data:
-            response = requests.post(internal_url, data=form_data, timeout=5)
+            response = requests.post(internal_url, data=form_data, timeout=request_timeout, 
+                                   allow_redirects=False)  # Prevent redirect abuse
         else:
-            response = requests.get(internal_url, timeout=5)
+            response = requests.get(internal_url, timeout=request_timeout, 
+                                  allow_redirects=False)  # Prevent redirect abuse
         
-        # Return the response
-        return response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/html')}
+        # Filter response content to prevent dangerous information leakage
+        content_type = response.headers.get('Content-Type', 'text/html')
+        filtered_content = SecurityFilter.filter_response_content(response.text, content_type)
+        
+        # Return the filtered response
+        return filtered_content, response.status_code, {'Content-Type': content_type}
         
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Request failed: {str(e)}'}), 500

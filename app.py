@@ -13,12 +13,25 @@ app.register_blueprint(blog_bp, url_prefix='/')
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(logs_bp, url_prefix='/logs')
 
-@app.route('/fetch-next', methods=['POST'])
+@app.route('/fetch-next', methods=['GET', 'POST'])
 def fetch_next():
     """
     SSRF endpoint that allows fetching internal URLs
     This is the intended way to access the admin panel
     """
+    # Handle GET requests for endpoint information
+    if request.method == 'GET' and not request.args.get('url'):
+        return jsonify({
+            'endpoint': '/fetch-next',
+            'method': 'POST',
+            'description': 'Fetch content from external URLs',
+            'parameters': {
+                'url': 'The URL to fetch content from (query parameter)'
+            },
+            'example': 'curl -X POST "http://localhost:8082/fetch-next?url=https://example.com"',
+            'note': 'Supports internal URLs like admin, localhost'
+        })
+    
     try:
         # Get the URL parameter from query string
         url = request.args.get('url', '')
@@ -49,7 +62,7 @@ def fetch_next():
             internal_url += f"?{parsed_url.query}"
         
         # Make the internal request with form data if provided
-        headers = {'X-Forwarded-For': '127.0.0.1'}
+        # Since we're making requests from localhost (127.0.0.1), they will be allowed
         
         # Forward any form data from the original request
         form_data = dict(request.form)
@@ -57,9 +70,9 @@ def fetch_next():
             del form_data['url']  # Remove the url parameter
         
         if form_data:
-            response = requests.post(internal_url, data=form_data, headers=headers, timeout=5)
+            response = requests.post(internal_url, data=form_data, timeout=5)
         else:
-            response = requests.get(internal_url, headers=headers, timeout=5)
+            response = requests.get(internal_url, timeout=5)
         
         # Return the response
         return response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/html')}

@@ -8,13 +8,10 @@ admin_bp = Blueprint('admin', __name__)
 
 def check_internal_access():
     """Check if the request is coming from localhost/internal network"""
-    # Get the real IP address, considering potential proxies
-    remote_addr = request.headers.get('X-Forwarded-For', request.remote_addr)
-    if remote_addr:
-        # Take the first IP if there are multiple (in case of proxy chain)
-        remote_addr = remote_addr.split(',')[0].strip()
+    # Only trust the actual remote address, ignore proxy headers for security
+    remote_addr = request.remote_addr
     
-    # Allow localhost and internal network access
+    # Allow localhost and internal network access only
     allowed_ips = ['127.0.0.1', '::1', 'localhost']
     
     # Check if request is from allowed IPs or internal Docker network

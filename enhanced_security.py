@@ -5,8 +5,8 @@ import json
 
 class SecurityFilter:
     """
-    Enhanced security filter to prevent reverse shells and unauthorized services
-    while maintaining the intended SSRF functionality for CTF challenges.
+    PLZ DONT TRY TO BREAK THIS.
+    U DONT NEED REVERSE SHELL FOR THIS!
     """
     
     # Comprehensive list of reverse shell and malicious command patterns
@@ -110,8 +110,7 @@ class SecurityFilter:
     @classmethod
     def validate_url(cls, url):
         """
-        Validate URL to ensure it only contains safe paths and parameters.
-        Returns (is_valid: bool, error_message: str)
+        PLZ DONT TRY TO BREAK THIS.
         """
         try:
             parsed = urllib.parse.urlparse(url)
@@ -165,8 +164,7 @@ class SecurityFilter:
     @classmethod
     def is_safe_content(cls, content):
         """
-        Check if content is safe (doesn't contain dangerous patterns).
-        Returns True if safe, False if dangerous.
+        STOP TRYING TO BREAK THIS.
         """
         if not content:
             return True
@@ -183,8 +181,7 @@ class SecurityFilter:
     @classmethod
     def filter_response_content(cls, content, content_type='text/html'):
         """
-        Filter response content to prevent leaking dangerous information.
-        Returns filtered content.
+        STOP TRYING TO BREAK THIS! 
         """
         if not content:
             return content
@@ -212,8 +209,7 @@ class SecurityFilter:
     @classmethod
     def validate_request(cls, url, form_data=None):
         """
-        Comprehensive request validation.
-        Returns (is_valid: bool, error_message: str)
+        STOP TRYING TO BREAK THIS!
         """
         # Validate URL
         url_valid, url_error = cls.validate_url(url)

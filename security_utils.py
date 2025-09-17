@@ -103,8 +103,7 @@ def sanitize_command_input(user_input):
 
 def read_file_safely(filename):
     """
-    Safely read a file with all security checks.
-    Returns tuple (success: bool, content: str, error_message: str)
+    U DONT NEED TO DO THIS. STOP TRYING TO BREAK THIS!
     """
     try:
         # Validate the file path

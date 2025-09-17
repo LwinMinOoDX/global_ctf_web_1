@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+    <div class="post">
+        <h1>{{ post.title }}</h1>
+        <div class="post-meta">By {{ post.author }}</div>
+        <p>{{ post.content }}</p>
+    </div>
+    
+    <div class="pagination">
+        {% if prev_id %}
+        <!-- VULNERABLE: This link uses JavaScript to fetch the previous post via the vulnerable endpoint -->
+        <a href="#" onclick="fetchPost('/fetch-next?url=http://blog/post/{{ prev_id }}'); return false;">Previous Post</a>
+        {% endif %}
+        
+        {% if next_id %}
+        <!-- VULNERABLE: This link uses JavaScript to fetch the next post via the vulnerable endpoint -->
+        <a href="#" onclick="fetchPost('/fetch-next?url=http://blog/post/{{ next_id }}'); return false;">Next Post</a>
+        {% endif %}
+    </div>
+    
+    <div id="fetched-content" style="display: none; margin-top: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;"></div>
+    
+    <script>
+        function fetchPost(url) {
+            // Extract post ID from the URL for navigation
+            const postIdMatch = url.match(/\/post\/(\d+)/);
+            const postId = postIdMatch ? postIdMatch[1] : null;
+            
+            // Navigate directly to the post URL for proper page navigation
+            if (postId) {
+                window.location.href = `/post/${postId}`;
+            } else {
+                // Fallback: use the vulnerable endpoint for non-standard URLs (for CTF exploitation)
+                fetch(url)
+                    .then(response => response.text())
+                    .then(data => {
+                        document.getElementById('fetched-content').innerHTML = data;
+                        document.getElementById('fetched-content').style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('fetched-content').innerHTML = 'Error fetching content: ' + error;
+                        document.getElementById('fetched-content').style.display = 'block';
+                    });
+            }
+        }
+    </script>
+{% endblock %}

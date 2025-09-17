@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Tech Blog - Home{% endblock %}
+
+{% block content %}
+    <h1>Latest Posts</h1>
+    
+    {% for post in posts %}
+    <div class="post">
+        <h2><a href="/post/{{ post.id }}">{{ post.title }}</a></h2>
+        <div class="post-meta">By {{ post.author }}</div>
+        <p>{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+        <a href="/post/{{ post.id }}">Read more</a>
+    </div>
+    {% endfor %}
+{% endblock %}

@@ -67,3 +67,7 @@ def contact():
 @blog_bp.route('/health')
 def health():
     return jsonify({"status": "healthy", "service": "blog"})
+
+@blog_bp.route('/ssrf-test')
+def ssrf_test():
+    return render_template('ssrf_test.html')

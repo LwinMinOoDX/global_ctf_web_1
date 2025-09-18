@@ -79,12 +79,27 @@ def fetch_next():
         # Use strict timeout and connection limits to prevent abuse
         request_timeout = 3  # Short timeout to prevent hanging connections
         
+        # Create a session with limited redirect handling
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        
+        session = requests.Session()
+        # Configure retry strategy with limited redirects
+        retry_strategy = Retry(
+            total=0,  # No retries on failure
+            redirect=3,  # Allow up to 3 redirects
+            status_forcelist=[]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
         if form_data:
-            response = requests.post(internal_url, data=form_data, timeout=request_timeout, 
-                                   allow_redirects=False)  # Prevent redirect abuse
+            response = session.post(internal_url, data=form_data, timeout=request_timeout, 
+                                   allow_redirects=True)  # Allow redirects to get actual content
         else:
-            response = requests.get(internal_url, timeout=request_timeout, 
-                                  allow_redirects=False)  # Prevent redirect abuse
+            response = session.get(internal_url, timeout=request_timeout, 
+                                  allow_redirects=True)  # Allow redirects to get actual content
         
         # Filter response content to prevent dangerous information leakage
         content_type = response.headers.get('Content-Type', 'text/html')

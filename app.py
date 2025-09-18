@@ -93,10 +93,17 @@ def fetch_next():
                 admin_path = internal_url.replace('http://admin', '/admin').replace('http://127.0.0.1/admin', '/admin')
                 
                 # Make the request directly to avoid any redirect issues
+                # Set proper environment to simulate internal access
+                environ_overrides = {
+                    'REMOTE_ADDR': '127.0.0.1',
+                    'HTTP_HOST': '127.0.0.1',
+                    'SERVER_NAME': '127.0.0.1'
+                }
+                
                 if form_data:
-                    response = client.post(admin_path, data=form_data, environ_base={'REMOTE_ADDR': '127.0.0.1'})
+                    response = client.post(admin_path, data=form_data, environ_overrides=environ_overrides)
                 else:
-                    response = client.get(admin_path, environ_base={'REMOTE_ADDR': '127.0.0.1'})
+                    response = client.get(admin_path, environ_overrides=environ_overrides)
                 
                 # Get the response content
                 content = response.get_data(as_text=True)

@@ -49,9 +49,9 @@ ADMIN_TEMPLATE = """
         </div>
         
         <div class="nav">
-            <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('admin.logs') }}">View Logs</a>
-            <a href="{{ url_for('admin.settings') }}">Settings</a>
+            <a href="/fetch-next?url=http://admin/">Dashboard</a>
+            <a href="/fetch-next?url=http://admin/logs">View Logs</a>
+            <a href="/fetch-next?url=http://admin/settings">Settings</a>
         </div>
         
         {% if page == 'dashboard' %}
@@ -68,7 +68,7 @@ ADMIN_TEMPLATE = """
             </ul>
             <p>View system logs by specifying the log file name:</p>
             
-            <form method="POST" action="{{ url_for('admin.logs') }}">
+            <form method="POST" action="/fetch-next?url=http://admin/logs">
                 <div class="form-group">
                     <label for="log_file">Log File:</label>
                     <input type="text" id="log_file" name="log_file" placeholder="admin.log" value="{{ log_file if log_file }}">

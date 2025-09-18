@@ -94,18 +94,16 @@ class SecurityFilter:
     COMPILED_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in DANGEROUS_PATTERNS]
     
     # Allowed URL paths for the CTF challenge
+    # Admin paths are intentionally excluded to prevent SSRF access
     ALLOWED_PATHS = [
-        '/admin',
-        '/admin/',
-        '/admin/logs',
-        '/admin/settings',
         '/logs',
+        '/logs/logs',
         '/',
         ''
     ]
     
     # Allowed query parameters
-    ALLOWED_QUERY_PARAMS = ['log_file']
+    ALLOWED_QUERY_PARAMS = ['log_file', 'file']
     
     @classmethod
     def validate_url(cls, url):

@@ -39,15 +39,20 @@ def fetch_next():
         if not url:
             return jsonify({'error': 'URL parameter is required'}), 400
         
+        # Check request depth to prevent deep nested SSRF calls
+        ssrf_depth = int(request.headers.get('X-SSRF-Depth', '0'))
+        if ssrf_depth >= 2:
+            return jsonify({'error': 'Maximum SSRF request depth exceeded for security reasons'}), 403
+        
         # Enhanced security validation
         form_data = dict(request.form)
         if 'url' in form_data:
             del form_data['url']  # Remove the url parameter from form data
         
-        # Validate the entire request using enhanced security filter
-        is_valid, error_message = SecurityFilter.validate_request(url, form_data)
-        if not is_valid:
-            return jsonify({'error': f'Security validation failed: {error_message}'}), 400
+        # Security validation disabled for CTF - this creates the vulnerability
+        # is_valid, error_message = SecurityFilter.validate_request(url, form_data)
+        # if not is_valid:
+        #     return jsonify({'error': f'Security validation failed: {error_message}'}), 400
         
         # Parse the URL to validate it
         parsed_url = urllib.parse.urlparse(url)
@@ -56,14 +61,14 @@ def fetch_next():
         if parsed_url.scheme not in ['http']:
             return jsonify({'error': 'Only HTTP URLs are allowed'}), 400
         
-        # Allow localhost and admin host
+        # Allow localhost and admin host for SSRF vulnerability
         allowed_hosts = ['localhost', '127.0.0.1', 'admin']
         if parsed_url.hostname not in allowed_hosts:
             return jsonify({'error': 'Host not allowed'}), 400
         
-        # Construct the internal URL
+        # Construct the internal URL - map 'admin' hostname to localhost
         if parsed_url.hostname == 'admin':
-            # Map admin host to localhost admin endpoint
+            # Map admin hostname to localhost admin panel
             internal_url = f"http://127.0.0.1:80/admin{parsed_url.path}"
         else:
             internal_url = f"http://127.0.0.1:80{parsed_url.path}"
@@ -80,7 +85,12 @@ def fetch_next():
         request_timeout = 3  # Short timeout to prevent hanging connections
         
         # For admin panel requests, directly call the admin functions to avoid redirects
-        if internal_url.startswith('http://admin/') or internal_url.startswith('http://127.0.0.1/admin/'):
+        # Handle both http://admin and http://admin/ patterns, with or without port
+        if (internal_url.startswith('http://admin/') or internal_url.startswith('http://127.0.0.1/admin/') or 
+            internal_url.startswith('http://127.0.0.1:80/admin/') or internal_url.startswith('http://127.0.0.1:80/admin') or
+            internal_url == 'http://admin' or internal_url == 'http://127.0.0.1/admin' or internal_url == 'http://127.0.0.1:80/admin' or
+            internal_url.startswith('http://admin?') or internal_url.startswith('http://127.0.0.1/admin?') or
+            internal_url.startswith('http://127.0.0.1:80/admin?')):
             from admin_blueprint import admin_bp
             from flask import Flask
             
@@ -89,15 +99,23 @@ def fetch_next():
             test_app.register_blueprint(admin_bp, url_prefix='/admin')
             
             with test_app.test_client() as client:
-                # Extract the admin path
-                admin_path = internal_url.replace('http://admin', '/admin').replace('http://127.0.0.1/admin', '/admin')
+                # Extract the admin path and ensure it has proper format
+                admin_path = internal_url.replace('http://admin', '/admin').replace('http://127.0.0.1/admin', '/admin').replace('http://127.0.0.1:80/admin', '/admin')
+                
+                # If the path is just /admin (without trailing slash), add it to match Flask routes
+                if admin_path == '/admin':
+                    admin_path = '/admin/'
                 
                 # Make the request directly to avoid any redirect issues
                 # Set proper environment to simulate internal access
+                # Add headers to track SSRF depth and indicate this is an SSRF request
+                current_depth = int(request.headers.get('X-SSRF-Depth', '0'))
                 environ_overrides = {
                     'REMOTE_ADDR': '127.0.0.1',
                     'HTTP_HOST': '127.0.0.1',
-                    'SERVER_NAME': '127.0.0.1'
+                    'SERVER_NAME': '127.0.0.1',
+                    'HTTP_X_SSRF_REQUEST': 'true',
+                    'HTTP_X_SSRF_DEPTH': str(current_depth + 1)
                 }
                 
                 if form_data:

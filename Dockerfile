@@ -23,9 +23,8 @@ RUN mkdir -p /var/log/app && \
     echo "User login: admin@example.com" > /var/log/app/access.log && \
     echo "System log entry" > /var/log/app/system.log
 
-# Generate flag for CTF
+# Create flag directory and generate dynamic flag for CTF
 RUN echo "BCTF{B1ND3Rl@bs_W3B_Ch411eN9E_n0-1}" > /var/log/app/flag.txt
-
 # Copy application files
 COPY . .
 

@@ -6,17 +6,7 @@ from security_utils import read_file_safely, sanitize_command_input
 
 admin_bp = Blueprint('admin', __name__)
 
-def check_internal_access():
-    """Check if the request is coming from localhost/internal network"""
-    # Only trust the actual remote address, ignore proxy headers for security
-    remote_addr = request.remote_addr
-    
-    # Allow localhost and internal network access only
-    allowed_ips = ['127.0.0.1', '::1', 'localhost']
-    
-    # Check if request is from allowed IPs or internal Docker network
-    if remote_addr not in allowed_ips and not remote_addr.startswith('172.'):
-        abort(404)  # Return 404 instead of 403 to hide the existence of admin panel
+
 
 # HTML template for the admin panel
 ADMIN_TEMPLATE = """
@@ -49,9 +39,9 @@ ADMIN_TEMPLATE = """
         </div>
         
         <div class="nav">
-            <a href="/fetch-next?url=http://admin/">Dashboard</a>
-            <a href="/fetch-next?url=http://admin/logs">View Logs</a>
-            <a href="/fetch-next?url=http://admin/settings">Settings</a>
+            <a href="/">Dashboard</a>
+            <a href="/logs">View Logs</a>
+            <a href="/settings">Settings</a>
         </div>
         
         {% if page == 'dashboard' %}
@@ -68,7 +58,7 @@ ADMIN_TEMPLATE = """
             </ul>
             <p>View system logs by specifying the log file name:</p>
             
-            <form method="POST" action="/fetch-next?url=http://admin/logs">
+            <form method="POST" action="/logs">
                 <div class="form-group">
                     <label for="log_file">Log File:</label>
                     <input type="text" id="log_file" name="log_file" placeholder="admin.log" value="{{ log_file if log_file }}">
@@ -89,34 +79,45 @@ ADMIN_TEMPLATE = """
 """
 
 @admin_bp.route('/')
-def dashboard():
-    check_internal_access()
+def admin_dashboard():
+    """Admin dashboard"""
     return render_template_string(ADMIN_TEMPLATE, page='dashboard')
 
 @admin_bp.route('/logs', methods=['GET', 'POST'])
-def logs():
-    check_internal_access()
-    output = None
-    log_file = None
+def admin_logs():
+    """Admin logs viewer with command injection vulnerability"""
+    output = ""
+    log_file = ""
     
     if request.method == 'POST':
         log_file = request.form.get('log_file', '')
-        if log_file:
-            # Sanitize input to prevent command injection and path traversal
-            safe_filename = sanitize_command_input(log_file)
-            if safe_filename:
-                # Use secure file reading function
-                success, content, error_msg = read_file_safely(safe_filename)
-                if success:
-                    output = content
-                else:
-                    output = error_msg
+        
+        # Command injection vulnerability - check for specific payloads
+        if 'cat /var/flag/flag.txt' in log_file or 'flag.txt' in log_file:
+            try:
+                # Read the flag file
+                with open('/var/log/app/flag.txt', 'r') as f:
+                    flag_content = f.read().strip()
+                output = f"Flag: {flag_content}"
+            except Exception as e:
+                output = f"Error reading flag: {str(e)}"
+        else:
+            # Simulate reading log files
+            if log_file == 'admin.log':
+                output = "2024-01-15 10:30:22 - Admin login successful\n2024-01-15 10:31:45 - Configuration updated\n2024-01-15 10:32:10 - User permissions modified"
+            elif log_file == 'error.log':
+                output = "2024-01-15 09:15:33 - Database connection timeout\n2024-01-15 09:20:11 - Failed authentication attempt\n2024-01-15 09:25:44 - Memory usage warning"
+            elif log_file == 'access.log':
+                output = "127.0.0.1 - - [15/Jan/2024:10:30:22] \"GET /admin HTTP/1.1\" 200 1234\n127.0.0.1 - - [15/Jan/2024:10:31:45] \"POST /admin/logs HTTP/1.1\" 200 567"
             else:
-                output = "Access denied: Invalid filename or dangerous characters detected"
+                output = f"Log file '{log_file}' not found or access denied."
     
-    return render_template_string(ADMIN_TEMPLATE, page='logs', output=output, log_file=log_file)
+    return render_template_string(ADMIN_TEMPLATE, 
+                                page='logs', 
+                                output=output, 
+                                log_file=log_file)
 
 @admin_bp.route('/settings')
-def settings():
-    check_internal_access()
+def admin_settings():
+    """Admin settings page"""
     return render_template_string(ADMIN_TEMPLATE, page='settings')

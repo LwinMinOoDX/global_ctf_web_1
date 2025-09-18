@@ -79,34 +79,47 @@ def fetch_next():
         # Use strict timeout and connection limits to prevent abuse
         request_timeout = 3  # Short timeout to prevent hanging connections
         
-        # Create a session with limited redirect handling
-        from requests.adapters import HTTPAdapter
-        from urllib3.util.retry import Retry
-        
-        session = requests.Session()
-        # Configure retry strategy with limited redirects
-        retry_strategy = Retry(
-            total=0,  # No retries on failure
-            redirect=3,  # Allow up to 3 redirects
-            status_forcelist=[]
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-        
-        if form_data:
-            response = session.post(internal_url, data=form_data, timeout=request_timeout, 
-                                   allow_redirects=True)  # Allow redirects to get actual content
+        # For admin panel requests, directly call the admin functions to avoid redirects
+        if internal_url.startswith('http://admin/') or internal_url.startswith('http://127.0.0.1/admin/'):
+            from admin_blueprint import admin_bp
+            from flask import Flask
+            
+            # Create a test client to directly call admin routes
+            test_app = Flask(__name__)
+            test_app.register_blueprint(admin_bp, url_prefix='/admin')
+            
+            with test_app.test_client() as client:
+                # Extract the admin path
+                admin_path = internal_url.replace('http://admin', '/admin').replace('http://127.0.0.1/admin', '/admin')
+                
+                # Make the request directly to avoid any redirect issues
+                if form_data:
+                    response = client.post(admin_path, data=form_data, environ_base={'REMOTE_ADDR': '127.0.0.1'})
+                else:
+                    response = client.get(admin_path, environ_base={'REMOTE_ADDR': '127.0.0.1'})
+                
+                # Get the response content
+                content = response.get_data(as_text=True)
+                status_code = response.status_code
+                content_type = response.headers.get('Content-Type', 'text/html')
         else:
-            response = session.get(internal_url, timeout=request_timeout, 
-                                  allow_redirects=True)  # Allow redirects to get actual content
+            # For non-admin requests, use regular HTTP requests
+            if form_data:
+                response = requests.post(internal_url, data=form_data, timeout=request_timeout, 
+                                       allow_redirects=False)
+            else:
+                response = requests.get(internal_url, timeout=request_timeout, 
+                                      allow_redirects=False)
+            
+            content = response.text
+            status_code = response.status_code
+            content_type = response.headers.get('Content-Type', 'text/html')
         
         # Filter response content to prevent dangerous information leakage
-        content_type = response.headers.get('Content-Type', 'text/html')
-        filtered_content = SecurityFilter.filter_response_content(response.text, content_type)
+        filtered_content = SecurityFilter.filter_response_content(content, content_type)
         
         # Return the filtered response
-        return filtered_content, response.status_code, {'Content-Type': content_type}
+        return filtered_content, status_code, {'Content-Type': content_type}
         
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Request failed: {str(e)}'}), 500

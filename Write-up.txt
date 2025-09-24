@@ -1,0 +1,24 @@
+# CTF Write-up: Inside thoughts
+Description
+Your thoughts in your head kills.
+
+## Solution Steps
+
+1. Identify the SSRF Endpoint
+The application has SSRF endpoints at `/fetch-next` in 'previous post' and 'next post' functionality which can be leveraged to ssrf into /admin
+
+2. Discover Internal Services
+The endpoint allows requests to the '/admin' hostname, which maps to the internal admin panel.
+
+3. Explore Admin Panel
+First, explore what's available on the admin panel and this will reveal available log files including `flag.txt`.
+
+4. Retrieve the Flag
+Use the log viewing functionality to read the flag with 'POST' method only. You can either do it in burp suite or in terminal like this:
+
+```
+curl -X POST "http://[target]/fetch-next?url=http://admin/logs" \
+     -d "log_file=flag.txt" \
+     -H "Content-Type: application/x-www-form-urlencoded"
+```
+

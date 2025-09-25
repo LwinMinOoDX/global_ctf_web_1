@@ -169,17 +169,16 @@ class RateLimiter:
             while request_times and current_time - request_times[0] > self.time_window:
                 request_times.popleft()
             
-            # Add current request
-            request_times.append(current_time)
-            
-            # Check if rate limit exceeded
-            if len(request_times) > self.max_requests:
-                # Block the IP
+            # Check if rate limit would be exceeded with this request
+            if len(request_times) >= self.max_requests:
+                # Block the IP for future requests
                 self.blocked_ips[ip_address] = current_time + self.block_duration
                 # Clear request history for blocked IP
                 self.request_history[ip_address].clear()
                 return True
             
+            # Add current request (only if not blocking)
+            request_times.append(current_time)
             return False
     
     def get_client_ip(self):

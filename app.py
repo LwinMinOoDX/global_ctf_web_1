@@ -2,16 +2,22 @@
 from flask import Flask, request, jsonify
 import requests
 import urllib.parse
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from blog_blueprint import blog_bp
 from admin_blueprint import admin_bp
 from logs_blueprint import logs_bp
 from enhanced_security import SecurityFilter
-from rate_limiter import apply_rate_limiting_globally, rate_limiter
 
 app = Flask(__name__)
 
-# Apply rate limiting globally to all routes
-apply_rate_limiting_globally(app)
+# Initialize Flask-Limiter with 5 requests per second for all endpoints
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["5 per second"],
+    storage_uri="memory://"
+)
+limiter.init_app(app)
 
 # Register blueprints with their respective URL prefixes
 app.register_blueprint(blog_bp, url_prefix='/')
@@ -155,17 +161,7 @@ def fetch_next():
     except Exception as e:
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
-@app.route('/rate-limit-status', methods=['GET'])
-def rate_limit_status():
-    """Debug endpoint to check rate limiter status"""
-    return jsonify({
-        'rate_limiter_status': rate_limiter.get_status(),
-        'settings': {
-            'max_requests': rate_limiter.max_requests,
-            'time_window': rate_limiter.time_window,
-            'block_duration': rate_limiter.block_duration
-        }
-    })
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80, debug=False)

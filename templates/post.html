@@ -11,12 +11,10 @@
     
     <div class="pagination">
         {% if prev_id %}
-        <!-- VULNERABLE: This link uses JavaScript to fetch the previous post via the vulnerable endpoint -->
         <a href="#" onclick="fetchPost('/fetch-next?url=http://blog/post/{{ prev_id }}'); return false;">Previous Post</a>
         {% endif %}
         
         {% if next_id %}
-        <!-- VULNERABLE: This link uses JavaScript to fetch the next post via the vulnerable endpoint -->
         <a href="#" onclick="fetchPost('/fetch-next?url=http://blog/post/{{ next_id }}'); return false;">Next Post</a>
         {% endif %}
     </div>

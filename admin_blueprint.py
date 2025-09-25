@@ -1,10 +1,57 @@
 #!/usr/bin/env python3
-from flask import Blueprint, request, render_template_string, redirect, url_for, abort
+from flask import Blueprint, request, render_template_string, redirect, url_for, abort, jsonify
 import subprocess
 import os
 from security_utils import read_file_safely, sanitize_command_input
+from deployment_config import validate_admin_access
 
 admin_bp = Blueprint('admin', __name__)
+
+def check_ssrf_access():
+    """
+    Check if the request is coming through the SSRF endpoint.
+    This ensures the admin panel is only accessible via the intended vulnerability.
+    Uses multiple validation methods for robustness in production environments.
+    """
+    # Method 1: Check for SSRF headers that are set by the fetch-next endpoint
+    ssrf_request = request.headers.get('X-SSRF-Request')
+    ssrf_depth = request.headers.get('X-SSRF-Depth')
+    
+    # Method 2: Check for internal request indicators
+    # The fetch-next endpoint sets specific headers when making internal requests
+    if ssrf_request == 'true' and ssrf_depth is not None:
+        return True
+    
+    # Method 3: Check if request is coming from the application itself (test_client)
+    # This is set by Flask's test_client when making internal requests
+    if request.environ.get('werkzeug.server.shutdown') is not None:
+        return True
+    
+    # Method 4: Check for specific user agent that's set by the SSRF endpoint
+    user_agent = request.headers.get('User-Agent', '')
+    if 'python-requests' in user_agent.lower() and ssrf_request == 'true':
+        return True
+    
+    # Method 5: Block all external access by default
+    # Only allow if coming through the internal SSRF mechanism
+    return False
+
+def require_ssrf_access(f):
+    """Decorator to require SSRF access for admin routes"""
+    def decorated_function(*args, **kwargs):
+        # Use the robust deployment configuration for access validation
+        is_allowed, error_message = validate_admin_access(request)
+        
+        if not is_allowed:
+            return jsonify({
+                'error': 'Access Denied',
+                'message': 'This admin panel is not accessible for you.'
+                
+            }), 403
+        
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
 
 
 
@@ -79,11 +126,13 @@ ADMIN_TEMPLATE = """
 """
 
 @admin_bp.route('/')
+@require_ssrf_access
 def admin_dashboard():
     """Admin dashboard"""
     return render_template_string(ADMIN_TEMPLATE, page='dashboard')
 
 @admin_bp.route('/logs', methods=['GET', 'POST'])
+@require_ssrf_access
 def admin_logs():
     """Admin logs viewer with command injection vulnerability"""
     output = ""
@@ -118,6 +167,7 @@ def admin_logs():
                                 log_file=log_file)
 
 @admin_bp.route('/settings')
+@require_ssrf_access
 def admin_settings():
     """Admin settings page"""
     return render_template_string(ADMIN_TEMPLATE, page='settings')
